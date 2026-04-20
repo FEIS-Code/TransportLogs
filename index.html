@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transport Logs — FEIS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap'); body{font-family:'Inter',sans-serif;}</style>
+</head>
+<body class="min-h-screen bg-gray-50">
+<header class="bg-white shadow-md p-3 sm:p-4 sticky top-0 z-20">
+  <div class="max-w-5xl mx-auto flex justify-between items-center">
+    <h1 class="text-base sm:text-xl font-extrabold"><span class="text-red-800">FEIS</span> <span class="text-gray-600">Transport Logs</span></h1>
+    <div class="flex items-center gap-2">
+      <span id="user-badge" class="hidden text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full"></span>
+      <button id="logout-btn" onclick="logout()" class="hidden px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold">Logout</button>
+    </div>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen" class="max-w-sm mx-auto mt-20 p-3">
+  <div class="bg-white rounded-xl shadow-lg p-6">
+    <h2 class="text-lg font-bold text-red-800 mb-4 text-center">🚌 Admin Login</h2>
+    <form id="login-form" class="space-y-3">
+      <input id="login-user" type="text" required placeholder="Username" class="w-full rounded-lg border p-2.5 text-sm">
+      <input id="login-pass" type="password" required placeholder="Password" class="w-full rounded-lg border p-2.5 text-sm">
+      <p id="login-error" class="text-red-600 text-xs hidden"></p>
+      <button type="submit" class="w-full py-2.5 bg-red-800 text-white font-semibold rounded-lg text-sm">Login</button>
+    </form>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="hidden">
+  <div class="max-w-5xl mx-auto px-3 pt-3">
+    <div class="flex gap-1 border-b overflow-x-auto">
+      <button onclick="tab('pickup')" data-tab="pickup" class="tbtn px-3 py-2 text-xs sm:text-sm font-semibold border-b-2 border-red-800 text-red-800 whitespace-nowrap">🚌 Pickup</button>
+      <button onclick="tab('drop')" data-tab="drop" class="tbtn px-3 py-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">🏫 Drop</button>
+      <button onclick="tab('stats')" data-tab="stats" class="tbtn px-3 py-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">📊 Stats</button>
+      <button onclick="tab('settings')" data-tab="settings" class="tbtn px-3 py-2 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">⚙ Settings</button>
+    </div>
+  </div>
+  <main class="max-w-5xl mx-auto p-3 sm:p-6">
+
+    <!-- PICKUP TAB -->
+    <div id="t-pickup">
+      <button onclick="openLog('pickup')" class="mb-4 px-4 py-2 bg-red-800 text-white rounded-lg text-sm font-semibold">+ Log Pickup</button>
+      <div id="pickup-list" class="space-y-2"></div>
+      <p id="no-pickup" class="hidden text-center text-gray-400 py-8">No pickup logs yet.</p>
+    </div>
+
+    <!-- DROP TAB -->
+    <div id="t-drop" class="hidden">
+      <button onclick="openLog('drop')" class="mb-4 px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-semibold">+ Log Drop</button>
+      <div id="drop-list" class="space-y-2"></div>
+      <p id="no-drop" class="hidden text-center text-gray-400 py-8">No drop logs yet.</p>
+    </div>
+
+    <!-- STATS TAB -->
+    <div id="t-stats" class="hidden">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div class="bg-white rounded-xl shadow p-4 text-center"><div class="text-2xl font-bold text-red-800" id="s-pickups">0</div><div class="text-xs text-gray-500">Pickups</div></div>
+        <div class="bg-white rounded-xl shadow p-4 text-center"><div class="text-2xl font-bold text-blue-700" id="s-drops">0</div><div class="text-xs text-gray-500">Drops</div></div>
+        <div class="bg-white rounded-xl shadow p-4 text-center"><div class="text-2xl font-bold text-amber-500" id="s-pdelays">0</div><div class="text-xs text-gray-500">Pickup Delays</div></div>
+        <div class="bg-white rounded-xl shadow p-4 text-center"><div class="text-2xl font-bold text-amber-500" id="s-ddelays">0</div><div class="text-xs text-gray-500">Drop Delays</div></div>
+      </div>
+      <div class="bg-white rounded-xl shadow p-4"><h3 class="font-bold text-sm mb-2">Logs by Route</h3><div id="s-routes"></div></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="t-settings" class="hidden space-y-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="font-bold text-sm mb-2">Routes</h3>
+        <div id="route-tags" class="flex flex-wrap gap-2 mb-2"></div>
+        <div class="flex gap-2"><input id="new-route" type="text" placeholder="e.g. Route 9" class="rounded border p-2 text-sm flex-1"><button onclick="addRoute()" class="text-red-800 text-sm font-medium">+ Add</button></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveRoutes()" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold">Save</button>
+        <button onclick="runSetup()" class="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold">Setup Data</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- LOG MODAL -->
+<div id="log-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-white p-5 rounded-xl shadow-2xl w-full max-w-md m-auto">
+    <div class="flex justify-between items-center mb-4 border-b pb-2">
+      <h2 id="log-title" class="text-lg font-bold text-red-800">Log Pickup</h2>
+      <button onclick="closeM()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <form id="log-form" class="space-y-3">
+      <input type="hidden" id="log-type">
+      <div><label class="text-xs font-medium text-gray-700">Route</label><select id="log-route" required class="w-full rounded-lg border p-2 text-sm mt-1"></select></div>
+      <div><label class="text-xs font-medium text-gray-700">Number of Students</label><input id="log-students" type="number" min="0" required class="w-full rounded-lg border p-2 text-sm mt-1"></div>
+
+      <!-- Pickup fields -->
+      <div id="pickup-fields">
+        <div><label class="text-xs font-medium text-gray-700">Bus Arrival Time at School</label><input id="log-arrival" type="time" class="w-full rounded-lg border p-2 text-sm mt-1"></div>
+      </div>
+
+      <!-- Drop fields -->
+      <div id="drop-fields" class="hidden space-y-3">
+        <div><label class="text-xs font-medium text-gray-700">Departure Time from School</label><input id="log-departure" type="time" class="w-full rounded-lg border p-2 text-sm mt-1"></div>
+        <div><label class="text-xs font-medium text-gray-700">Bus Return Time to School</label><input id="log-return" type="time" class="w-full rounded-lg border p-2 text-sm mt-1"></div>
+      </div>
+
+      <!-- Delay -->
+      <div class="border-t pt-3">
+        <label class="text-xs font-medium text-gray-700">Any Delay?</label>
+        <div class="flex gap-3 mt-1">
+          <label class="flex items-center gap-1 text-sm"><input type="radio" name="delay" value="No" checked onchange="toggleDelay()"> No</label>
+          <label class="flex items-center gap-1 text-sm"><input type="radio" name="delay" value="Yes" onchange="toggleDelay()"> Yes</label>
+        </div>
+      </div>
+      <div id="delay-fields" class="hidden space-y-3">
+        <div><label class="text-xs font-medium text-gray-700">Delay Duration (minutes)</label><input id="log-delay-dur" type="number" min="1" placeholder="e.g. 15" class="w-full rounded-lg border p-2 text-sm mt-1"></div>
+        <div><label class="text-xs font-medium text-gray-700">Reason for Delay</label><textarea id="log-delay-reason" rows="2" placeholder="e.g. Traffic jam, vehicle breakdown..." class="w-full rounded-lg border p-2 text-sm mt-1"></textarea></div>
+      </div>
+
+      <div><label class="text-xs font-medium text-gray-700">Additional Notes</label><input id="log-notes" class="w-full rounded-lg border p-2 text-sm mt-1" placeholder="Optional"></div>
+      <button type="submit" id="log-btn" class="w-full py-2.5 bg-red-800 text-white font-semibold rounded-lg text-sm">Submit</button>
+    </form>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="max-w-5xl mx-auto px-3 py-6 text-center text-gray-500">
+  <p class="font-semibold mb-1">An App by <span class="text-indigo-600 font-bold">Team Garuda</span></p>
+  <p class="text-xs">Ram Patel (Grade 9) &bull; Krithik &amp; Kushal (Grade 8)</p>
+  <p class="text-xs">Melvin Andrew, Pragna Sai Sree &amp; Pujyasritha Reddy (Grade 7)</p>
+  <p class="text-xs text-gray-400 mt-1">Mentor: Mr. Rama Krishna</p>
+</footer>
+
+<script>
+const SCRIPT_URL='YOUR_SCRIPT_URL';
+let pickups=[],drops=[],routes=[],currentUser=null;
+const F=url=>fetch(url,{redirect:'follow'}).then(r=>r.json());
+const P=async(body)=>{const r=await fetch(SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:JSON.stringify({...body,auth:{username:currentUser.username,password:currentUser._pw}})});try{return await r.json();}catch(e){return{};}};
+function toast(msg){const t=document.createElement('div');t.className='fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+function showL(id){document.getElementById(id).innerHTML='<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div></div>';}
+
+async function loadData(){
+  showL('pickup-list');
+  const [d,r]=await Promise.all([F(SCRIPT_URL+'?action=all'),F(SCRIPT_URL+'?action=routes')]);
+  pickups=d.pickup||[];drops=d.drop||[];routes=r;
+  document.getElementById('log-route').innerHTML=routes.map(r=>`<option>${r}</option>`).join('');
+  renderPickups();
+}
+
+function delayBadge(r){
+  if(r.Delay!=='Yes') return '';
+  return `<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">⚠ Delayed ${r.DelayDuration?r.DelayDuration+'min':''}</span>`;
+}
+
+function renderPickups(){
+  const list=pickups.slice().reverse();
+  document.getElementById('no-pickup').classList.toggle('hidden',list.length>0);
+  document.getElementById('pickup-list').innerHTML=list.map(r=>`
+    <div class="bg-white rounded-lg shadow p-3 border-l-4 ${r.Delay==='Yes'?'border-amber-500':'border-green-500'}">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-semibold text-sm">${r.Route} <span class="text-gray-400 font-normal">· ${r.Date}</span></div>
+          <div class="text-xs text-gray-500">Students: <strong>${r.Students}</strong> · Arrived: <strong>${r.BusArrival||'—'}</strong></div>
+          ${r.Delay==='Yes'?`<div class="text-xs text-amber-600 mt-1">⚠ Delay: ${r.DelayDuration||'?'} min — ${r.DelayReason||'No reason'}</div>`:''}
+          ${r.Notes?`<div class="text-xs text-gray-400 mt-1">${r.Notes}</div>`:''}
+        </div>
+        <div class="flex items-center gap-2">
+          ${delayBadge(r)}
+          <button onclick="delLog('pickup','${r.ID}')" class="text-red-400 text-xs hover:text-red-600">✕</button>
+        </div>
+      </div>
+      <div class="text-[10px] text-gray-400 mt-1 font-mono">${r.ID}</div>
+    </div>
+  `).join('');
+}
+
+function renderDrops(){
+  const list=drops.slice().reverse();
+  document.getElementById('no-drop').classList.toggle('hidden',list.length>0);
+  document.getElementById('drop-list').innerHTML=list.map(r=>`
+    <div class="bg-white rounded-lg shadow p-3 border-l-4 ${r.Delay==='Yes'?'border-amber-500':'border-blue-500'}">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-semibold text-sm">${r.Route} <span class="text-gray-400 font-normal">· ${r.Date}</span></div>
+          <div class="text-xs text-gray-500">Students: <strong>${r.Students}</strong> · Departed: <strong>${r.DepartureTime||'—'}</strong> · Returned: <strong>${r.ReturnTime||'—'}</strong></div>
+          ${r.Delay==='Yes'?`<div class="text-xs text-amber-600 mt-1">⚠ Delay: ${r.DelayDuration||'?'} min — ${r.DelayReason||'No reason'}</div>`:''}
+          ${r.Notes?`<div class="text-xs text-gray-400 mt-1">${r.Notes}</div>`:''}
+        </div>
+        <div class="flex items-center gap-2">
+          ${delayBadge(r)}
+          <button onclick="delLog('drop','${r.ID}')" class="text-red-400 text-xs hover:text-red-600">✕</button>
+        </div>
+      </div>
+      <div class="text-[10px] text-gray-400 mt-1 font-mono">${r.ID}</div>
+    </div>
+  `).join('');
+}
+
+async function renderStats(){
+  const s=await F(SCRIPT_URL+'?action=stats');
+  document.getElementById('s-pickups').textContent=s.totalPickups;
+  document.getElementById('s-drops').textContent=s.totalDrops;
+  document.getElementById('s-pdelays').textContent=s.pickupDelays;
+  document.getElementById('s-ddelays').textContent=s.dropDelays;
+  document.getElementById('s-routes').innerHTML=Object.entries(s.routes).map(([k,v])=>`<div class="flex justify-between text-sm py-1 border-b"><span>${k}</span><span class="font-bold">${v}</span></div>`).join('');
+}
+
+// --- Modal ---
+function openLog(type){
+  document.getElementById('log-type').value=type;
+  document.getElementById('log-title').textContent=type==='pickup'?'🚌 Log Pickup':'🏫 Log Drop';
+  document.getElementById('log-btn').className=`w-full py-2.5 text-white font-semibold rounded-lg text-sm ${type==='pickup'?'bg-red-800':'bg-blue-700'}`;
+  document.getElementById('pickup-fields').classList.toggle('hidden',type!=='pickup');
+  document.getElementById('drop-fields').classList.toggle('hidden',type!=='drop');
+  document.getElementById('log-form').reset();
+  document.getElementById('delay-fields').classList.add('hidden');
+  const m=document.getElementById('log-modal');m.classList.remove('hidden');m.classList.add('flex');
+}
+function closeM(){const m=document.getElementById('log-modal');m.classList.add('hidden');m.classList.remove('flex');}
+function toggleDelay(){
+  const isYes=document.querySelector('input[name="delay"]:checked').value==='Yes';
+  document.getElementById('delay-fields').classList.toggle('hidden',!isYes);
+}
+
+async function handleLog(e){
+  e.preventDefault();
+  const btn=document.getElementById('log-btn');btn.disabled=true;btn.textContent='Submitting...';
+  const type=document.getElementById('log-type').value;
+  const delay=document.querySelector('input[name="delay"]:checked').value;
+  const base={route:document.getElementById('log-route').value,students:document.getElementById('log-students').value,delay:delay,delayDuration:document.getElementById('log-delay-dur').value,delayReason:document.getElementById('log-delay-reason').value,notes:document.getElementById('log-notes').value};
+  if(type==='pickup'){
+    base.action='logPickup';
+    base.busArrival=document.getElementById('log-arrival').value;
+  } else {
+    base.action='logDrop';
+    base.departureTime=document.getElementById('log-departure').value;
+    base.returnTime=document.getElementById('log-return').value;
+  }
+  await P(base);closeM();btn.disabled=false;btn.textContent='Submit';toast('Logged!');setTimeout(loadData,1500);
+}
+
+async function delLog(type,id){
+  if(!confirm('Delete this log?'))return;
+  await P({action:'deleteLog',type,id});toast('Deleted!');setTimeout(loadData,1500);
+}
+
+// --- Routes ---
+function renderRoutes(){
+  document.getElementById('route-tags').innerHTML=routes.map((r,i)=>`<span class="inline-flex items-center gap-1 bg-red-50 text-red-700 px-2 py-1 rounded-full text-xs">${r}<button onclick="routes.splice(${i},1);renderRoutes()" class="hover:text-red-500">&times;</button></span>`).join('');
+}
+function addRoute(){const v=document.getElementById('new-route').value.trim();if(v&&!routes.includes(v))routes.push(v);document.getElementById('new-route').value='';renderRoutes();}
+async function saveRoutes(){await P({action:'saveRoutes',items:routes});toast('Saved!');setTimeout(loadData,2000);}
+async function runSetup(){if(!confirm('Reset all data?'))return;await P({action:'setupData'});toast('Done!');setTimeout(loadData,3000);}
+
+// --- Tabs ---
+function tab(t){
+  ['pickup','drop','stats','settings'].forEach(id=>document.getElementById('t-'+id).classList.toggle('hidden',id!==t));
+  document.querySelectorAll('.tbtn').forEach(b=>{const a=b.dataset.tab===t;b.className=`tbtn px-3 py-2 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap ${a?'border-red-800 text-red-800':'border-transparent text-gray-500'}`;});
+  if(t==='drop')renderDrops();if(t==='stats')renderStats();if(t==='settings')renderRoutes();
+}
+
+// --- Auth ---
+async function handleLogin(e){
+  e.preventDefault();
+  const u=document.getElementById('login-user').value.trim(),p=document.getElementById('login-pass').value.trim();
+  try{
+    const r=await(await fetch(SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'login',username:u,password:p})})).json();
+    if(r.success&&r.role==='admin'){currentUser={...r,_pw:p};sessionStorage.setItem('tlAdmin',JSON.stringify(currentUser));showAdmin();}
+    else{document.getElementById('login-error').textContent=r.message||'Admin only';document.getElementById('login-error').classList.remove('hidden');}
+  }catch(e){document.getElementById('login-error').textContent='Error';document.getElementById('login-error').classList.remove('hidden');}
+}
+function logout(){currentUser=null;sessionStorage.removeItem('tlAdmin');location.reload();}
+function showAdmin(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('admin').classList.remove('hidden');
+  document.getElementById('user-badge').textContent=currentUser.displayName;
+  document.getElementById('user-badge').classList.remove('hidden');
+  document.getElementById('logout-btn').classList.remove('hidden');
+  loadData();
+}
+
+window.onload=function(){
+  const s=sessionStorage.getItem('tlAdmin');
+  if(s){currentUser=JSON.parse(s);showAdmin();}
+  document.getElementById('login-form').addEventListener('submit',handleLogin);
+  document.getElementById('log-form').addEventListener('submit',handleLog);
+};
+</script>
+</body>
+</html>
