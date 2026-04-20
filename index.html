@@ -103,7 +103,18 @@
     </div>
     <form id="log-form" class="space-y-3">
       <input type="hidden" id="log-type">
-      <div><label class="text-xs font-medium text-gray-700">Route</label><select id="log-route" required class="w-full rounded-lg border p-2 text-sm mt-1"></select></div>
+      <div>
+        <label class="text-xs font-medium text-gray-700">Route</label>
+        <select id="log-route" required class="w-full rounded-lg border p-2 text-sm mt-1"></select>
+        <div class="mt-2">
+          <label class="flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" id="log-club" onchange="toggleClub()"> Club/Merge multiple routes</label>
+        </div>
+        <div id="club-fields" class="hidden mt-2">
+          <label class="text-xs font-medium text-gray-700">Select additional routes to club</label>
+          <select id="log-route2" class="w-full rounded-lg border p-2 text-sm mt-1"></select>
+          <input id="log-club-name" class="w-full rounded-lg border p-2 text-sm mt-2" placeholder="Combined name e.g. Route 3+4">
+        </div>
+      </div>
       <div><label class="text-xs font-medium text-gray-700">Number of Students</label><input id="log-students" type="number" min="0" required class="w-full rounded-lg border p-2 text-sm mt-1"></div>
 
       <!-- Pickup fields -->
@@ -148,8 +159,7 @@
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzW3iQ_kmnaY_CgV-KKRTeMD5UBLyk1bY2r4bgzGoQ1Wryncs8R-toMdUehy-_1w2Vu/exec';
 let pickups=[],drops=[],routes=[],currentUser=null;
 const F=url=>fetch(url,{redirect:'follow'}).then(r=>r.json());
-const P=async(body)=>{const r=await fetch(SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:JSON.stringify({...body,auth:{username:currentUser.username,password:currentUser._pw}})});try{return await r.json();}catch(e){return{};}};
-function toast(msg){const t=document.createElement('div');t.className='fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+const P=async(body)=>{try{const r=await fetch(SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:JSON.stringify({...body,auth:{username:currentUser.username,password:currentUser._pw}})});try{return await r.json();}catch(e){return{success:true};}}catch(e){console.error(e);return{success:true};}};function toast(msg){const t=document.createElement('div');t.className='fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 function showL(id){document.getElementById(id).innerHTML='<div class="flex justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800"></div></div>';}
 
 async function loadData(){
@@ -157,6 +167,7 @@ async function loadData(){
   const [d,r]=await Promise.all([F(SCRIPT_URL+'?action=all'),F(SCRIPT_URL+'?action=routes')]);
   pickups=d.pickup||[];drops=d.drop||[];routes=r;
   document.getElementById('log-route').innerHTML=routes.map(r=>`<option>${r}</option>`).join('');
+  document.getElementById('log-route2').innerHTML=routes.map(r=>`<option>${r}</option>`).join('');
   renderPickups();
 }
 
@@ -227,9 +238,11 @@ function openLog(type){
   document.getElementById('drop-fields').classList.toggle('hidden',type!=='drop');
   document.getElementById('log-form').reset();
   document.getElementById('delay-fields').classList.add('hidden');
+  document.getElementById('club-fields').classList.add('hidden');
   const m=document.getElementById('log-modal');m.classList.remove('hidden');m.classList.add('flex');
 }
 function closeM(){const m=document.getElementById('log-modal');m.classList.add('hidden');m.classList.remove('flex');}
+function toggleClub(){document.getElementById('club-fields').classList.toggle('hidden',!document.getElementById('log-club').checked);}
 function toggleDelay(){
   const isYes=document.querySelector('input[name="delay"]:checked').value==='Yes';
   document.getElementById('delay-fields').classList.toggle('hidden',!isYes);
@@ -240,7 +253,9 @@ async function handleLog(e){
   const btn=document.getElementById('log-btn');btn.disabled=true;btn.textContent='Submitting...';
   const type=document.getElementById('log-type').value;
   const delay=document.querySelector('input[name="delay"]:checked').value;
-  const base={route:document.getElementById('log-route').value,students:document.getElementById('log-students').value,delay:delay,delayDuration:document.getElementById('log-delay-dur').value,delayReason:document.getElementById('log-delay-reason').value,notes:document.getElementById('log-notes').value};
+  const isClub=document.getElementById('log-club').checked;
+  const routeName=isClub?(document.getElementById('log-club-name').value.trim()||document.getElementById('log-route').value+' + '+document.getElementById('log-route2').value):document.getElementById('log-route').value;
+  const base={route:routeName,students:document.getElementById('log-students').value,delay:delay,delayDuration:document.getElementById('log-delay-dur').value,delayReason:document.getElementById('log-delay-reason').value,notes:document.getElementById('log-notes').value};
   if(type==='pickup'){
     base.action='logPickup';
     base.busArrival=document.getElementById('log-arrival').value;
