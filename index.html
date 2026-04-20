@@ -145,7 +145,7 @@
 </footer>
 
 <script>
-const SCRIPT_URL='YOUR_SCRIPT_URL';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzW3iQ_kmnaY_CgV-KKRTeMD5UBLyk1bY2r4bgzGoQ1Wryncs8R-toMdUehy-_1w2Vu/exec';
 let pickups=[],drops=[],routes=[],currentUser=null;
 const F=url=>fetch(url,{redirect:'follow'}).then(r=>r.json());
 const P=async(body)=>{const r=await fetch(SCRIPT_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:JSON.stringify({...body,auth:{username:currentUser.username,password:currentUser._pw}})});try{return await r.json();}catch(e){return{};}};
